@@ -57,7 +57,6 @@ PORT = '27017'
 USERNAME = 'fr24'
 PASSWORD = 'cheeseburger'
 DB = 'fr24'
-COLL = strftime("%Y_%m_%d", gmtime())
 # https://docs.mongodb.com/manual/reference/connection-string/
 MCONNECTIONSTRING = "mongodb://"+USERNAME+":"+PASSWORD+"@"+HOST+":"+PORT+"/"+DB
 
@@ -68,7 +67,6 @@ except pymongo.errors.ConnectionFailure, error:
     print "Could not connect to MongoDB: %s" % error
 
 MDB = MCONN[DB]
-MCOLL = MDB[COLL]
 
 BASE_URL = "http://lhr.data.fr24.com/zones/fcgi/feed.js?faa=1&mlat=1&flarm=0" \
     "&adsb=1&gnd=1&air=1&vehicles=0&estimated=0&maxage=0&gliders=0&stats=1"
@@ -83,6 +81,7 @@ data = []
 
 while True:
     httpget = RSESSION.get(URL)
+    MCOLL = MDB[strftime("%Y_%m_%d", gmtime())]
 
     if httpget.status_code != 200:
         print "http error: " + httpget.status_code
@@ -120,6 +119,7 @@ while True:
         if key in tcache and tcache[key] == aircraft['ts']:
             continue
         else:
+            MCOLL = MDB[strftime("%Y_%m_%d", gmtime())]
             MCOLL.insert(aircraft)
             tcache[key] = aircraft['ts']
 
