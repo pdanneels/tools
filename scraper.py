@@ -2,6 +2,9 @@
     Flight Radar 24 scraper
     Connects to a mongoDB database and dumps fligts in there
 
+        - Check out the filterac function to filter the data to your liking
+        - Set the MongoDB connection to your liking: HOST, PORT, USERNAME, PASSWORD, DB
+
     By: Junzi Sun, Pieter Danneels
     Summer 2016
 
@@ -12,26 +15,40 @@ import time
 import pymongo
 from time import strftime, gmtime
 
-def read_ac_data(data):
+def read_ac_data(splitdata):
     """
     Reads aircraft data from JSON format
 
     """
-    if len(data) != 18:
+    if len(splitdata) != 18:
         return None
-    aircraft = {}
-    aircraft['icao'] = data[0]          # ICAO code
-    aircraft['loc'] = {'lng': data[2], 'lat': data[1]} # Longitude, Latitude [deg]
-    aircraft['hdg'] = data[3]           # Heading [deg]
-    aircraft['alt'] = data[4]           # Altitude [ft]
-    aircraft['spd'] = data[5]           # Horizontal speed [knots]
-    aircraft['mdl'] = data[8]           # Aircraft model
-    aircraft['regid'] = data[9]         # Registration ID
-    aircraft['ts'] = data[10]           # Time stamp
-    aircraft['from'] = data[11]         # Origin [IATA]
-    aircraft['to'] = data[12]           # Destination [IATA]
-    aircraft['roc'] = data[15]          # Rate of climb [ft/min]
-    return aircraft
+    aircraftparam = {}
+    aircraftparam['icao'] = splitdata[0]          # ICAO code
+    aircraftparam['loc'] = {'lng': splitdata[2], 'lat': splitdata[1]} # Longitude, Latitude [deg]
+    aircraftparam['hdg'] = splitdata[3]           # Heading [deg]
+    aircraftparam['alt'] = splitdata[4]           # Altitude [ft]
+    aircraftparam['spd'] = splitdata[5]           # Horizontal speed [knots]
+    aircraftparam['mdl'] = splitdata[8]           # Aircraft model
+    aircraftparam['regid'] = splitdata[9]         # Registration ID
+    aircraftparam['ts'] = splitdata[10]           # Time stamp
+    aircraftparam['from'] = splitdata[11]         # Origin [IATA]
+    aircraftparam['to'] = splitdata[12]           # Destination [IATA]
+    aircraftparam['roc'] = splitdata[15]          # Rate of climb [ft/min]
+    return aircraftparam
+
+def filterac(filteraircraft):
+    """
+    Filters
+    If this function returns True the AC will be skipped.
+
+    """
+    # Only AC from and to AMS
+#    if filteraircraft['to'] != 'AMS' and filteraircraft['from'] != 'AMS':
+#        return True
+    # No AC on the ground
+    if filteraircraft['alt'] <= 100:
+        return True
+    return False
 
 EHAM = [57, 47, 0, 10]
 
@@ -47,8 +64,8 @@ MCONNECTIONSTRING = "mongodb://"+USERNAME+":"+PASSWORD+"@"+HOST+":"+PORT+"/"+DB
 try: # Connection to Mongo DB
     MCONN = pymongo.MongoClient(MCONNECTIONSTRING)
     print "Connected successfully."
-except pymongo.errors.ConnectionFailure, e:
-    print "Could not connect to MongoDB: %s" % e
+except pymongo.errors.ConnectionFailure, error:
+    print "Could not connect to MongoDB: %s" % error
 
 MDB = MCONN[DB]
 MCOLL = MDB[COLL]
@@ -75,7 +92,7 @@ while True:
     try:
         fr24data = httpget.json()
     except:
-        print ""
+        print "no valid json format could be downloaded"
         time.sleep(2) # anti fr24 flood
         continue
 
@@ -97,7 +114,7 @@ while True:
         else:
             aircraft['fr24'] = key
 
-        if aircraft['to'] != 'AMS' and aircraft['from'] != 'AMS':
+        if filterac(aircraft):
             continue
 
         if key in tcache and tcache[key] == aircraft['ts']:
