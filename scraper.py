@@ -2,7 +2,8 @@ import requests
 #import json
 import time
 #import threading
-from pymongo import MongoClient
+import pymongo
+from time import strftime, gmtime
 
 def read_ac_data(data):
     if len(data) != 18:
@@ -21,13 +22,24 @@ def read_ac_data(data):
     ac['roc'] = data[15]        # vertical rate
     return ac
 
-HOST = 'localhost'
-DB = 'FR24'
-COLL = 'EHAM'
 EHAM = [57, 47, 0, 10]
 
-mclient = MongoClient(HOST, 27017)
-mcoll = mclient[DB][COLL]
+HOST = 'danneels.nl'
+PORT = '27017'
+USERNAME = 'fr24'
+PASSWORD = 'cheeseburger'
+DB = 'fr24'
+COLL = strftime("%Y_%m_%d", gmtime())
+# https://docs.mongodb.com/manual/reference/connection-string/
+MCONNECTIONSTRING = "mongodb://"+USERNAME+":"+PASSWORD+"@"+HOST+":"+PORT+"/"+DB
+# Connection to Mongo DB
+try:
+    mconn=pymongo.MongoClient(MCONNECTIONSTRING)
+    print "Connected successfully."
+except pymongo.errors.ConnectionFailure, e:
+   print "Could not connect to MongoDB: %s" % e 
+mdb = mconn[DB]
+mcoll = mdb['test']
 
 base_url = "http://lhr.data.fr24.com/zones/fcgi/feed.js?faa=1&mlat=1&flarm=0" \
     "&adsb=1&gnd=1&air=1&vehicles=0&estimated=0&maxage=0&gliders=0&stats=1"
@@ -47,9 +59,6 @@ while True:
     if r.status_code != 200:
         time.sleep(2)   # We do not want to flood the fr24 server with requests
         continue
-    
-    if r.status_code == 200:
-        print "HTTP GET OK"
         
     try:
         res = r.json()
@@ -78,14 +87,11 @@ while True:
 
         if ac['to'] != 'AMS' and ac['from'] != 'AMS':
             continue
-
+        
         if key in tcache and tcache[key] == ac['ts']:
             continue
         else:
             mcoll.insert(ac)
             tcache[key] = ac['ts']
-
-    # now we insert the new dataset to MongoDB
-    # mcoll.insert(data)
-
+            
     time.sleep(2)
