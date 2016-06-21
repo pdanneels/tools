@@ -46,7 +46,7 @@ def filterac(filteraircraft):
 #    if filteraircraft['to'] != 'AMS' and filteraircraft['from'] != 'AMS':
 #        return True
     # No AC on the ground
-    if filteraircraft['alt'] <= 100:
+    if filteraircraft['alt'] <= 5:
         return True
     return False
 
@@ -81,7 +81,6 @@ data = []
 
 while True:
     httpget = RSESSION.get(URL)
-    MCOLL = MDB[strftime("%Y_%m_%d", gmtime())]
 
     if httpget.status_code != 200:
         print "http error: " + httpget.status_code
@@ -119,7 +118,7 @@ while True:
         if key in tcache and tcache[key] == aircraft['ts']:
             continue
         else:
-            MCOLL = MDB[strftime("%Y_%m_%d", gmtime())]
+            MCOLL = MDB["EHAM_"+strftime("%Y_%m_%d", gmtime())]
             MCOLL.insert(aircraft)
             tcache[key] = aircraft['ts']
 
